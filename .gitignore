@@ -11,4 +11,4 @@ Thumbs.db
 
 # Sensitive Data & Local Databases
 .env
-nba_veritabani.db
+nba_database.db
