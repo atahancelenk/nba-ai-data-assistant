@@ -1,0 +1,14 @@
+# Virtual Environment (Sanal Ortam)
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyc
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Sensitive Data & Local Databases
+.env
+nba_veritabani.db

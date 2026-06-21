@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Data Scientist | NBA Analisti</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">
+            <h2>🏀 NBA Data AI Asistanı</h2>
+            <p>Geçmiş istatistikleri sorun veya puan tahmini yapın.</p>
+        </div>
+        
+        <div class="chat-box" id="chat-box">
+            <div class="message ai-message">
+                Merhaba! Ben senin yapay zeka veri analistinim. LeBron'un kariyer sayılarını sorabilir veya bir oyuncunun gelecekteki performansını tahmin etmemi isteyebilirsin.
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="İngilizce bir soru sorun..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Gönder</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const inputField = document.getElementById("user-input");
+            const chatBox = document.getElementById("chat-box");
+            const message = inputField.value.trim();
+
+            if (message === "") return;
+
+            // 1. Kullanıcının mesajını ekrana yazdır
+            chatBox.innerHTML += `<div class="message user-message">${message}</div>`;
+            inputField.value = ""; // Kutuyu temizle
+            chatBox.scrollTop = chatBox.scrollHeight; // En alta kaydır
+
+            // 2. Yapay Zeka "Düşünüyor" animasyonu ekle
+            const loadingId = "loading-" + Date.now();
+            chatBox.innerHTML += `<div class="message ai-message" id="${loadingId}">Düşünüyor...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            
+            // 3. İŞTE KÖPRÜ BURASI! FastAPI'deki /chat rotasına POST isteği atıyoruz
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message }) // Veriyi JSON formatına çeviriyoruz
+            });
+
+            const data = await response.json();
+
+            // 4. Gelen cevabı ekrana yazdır ve 'Düşünüyor...' yazısını sil
+            document.getElementById(loadingId).remove();
+                
+            // Check for HTTP errors — FastAPI returns {"detail": "..."} on errors
+            if (!response.ok) {
+                chatBox.innerHTML += `<div class="message ai-message" style="color: red;">Hata: ${data.detail || "Unknown error"}</div>`;
+            } else {
+                chatBox.innerHTML += `<div class="message ai-message">${data.reply}</div>`;
+            }                
+            
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Enter tuşuna basıldığında mesajı göndermesi için
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
