@@ -8,4 +8,5 @@ pandas==2.2.2
 scikit-learn==1.5.0
 sqlalchemy==2.0.31
 joblib==1.4.2
+nba_api==1.4.1
 python-dotenv==1.0.1
