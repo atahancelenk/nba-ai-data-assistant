@@ -66,6 +66,3 @@ async def chat_with_ai(request: ChatRequest):
     except Exception as e:
         print(f"\n" + "="*40 + f"\n!!! BACKEND ERROR !!!\n{str(e)}\n" + "="*40 + "\n")
         raise HTTPException(status_code=500, detail=str(e))
-    
-
-    
