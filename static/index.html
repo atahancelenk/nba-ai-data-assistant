@@ -1,76 +1,244 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Data Scientist | NBA Analisti</title>
+    <title>NBA Data AI Assistant</title>
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="chat-container">
-        <div class="header">
-            <h2>🏀 NBA Data AI Asistanı</h2>
-            <p>Geçmiş istatistikleri sorun veya puan tahmini yapın.</p>
-        </div>
-        
-        <div class="chat-box" id="chat-box">
-            <div class="message ai-message">
-                Merhaba! Ben senin yapay zeka veri analistinim. LeBron'un kariyer sayılarını sorabilir veya bir oyuncunun gelecekteki performansını tahmin etmemi isteyebilirsin.
-            </div>
-        </div>
+    <div class="app">
 
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="İngilizce bir soru sorun..." onkeypress="handleKeyPress(event)">
-            <button onclick="sendMessage()">Gönder</button>
-        </div>
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <span class="logo-ball">🏀</span>
+                <span class="logo-text">NB<strong>AI</strong></span>
+            </div>
+
+            <div class="sidebar-section-label">Players</div>
+            <div class="player-list">
+                <button class="player-chip active" onclick="insertPrompt('Tell me about LeBron James career stats')">
+                    <span class="player-avatar" style="background:#1d428a">LJ</span>
+                    LeBron James
+                </button>
+                <button class="player-chip" onclick="insertPrompt('Tell me about Stephen Curry career stats')">
+                    <span class="player-avatar" style="background:#c8102e">SC</span>
+                    Stephen Curry
+                </button>
+                <button class="player-chip" onclick="insertPrompt('Tell me about Russell Westbrook career stats')">
+                    <span class="player-avatar" style="background:#9333ea">RW</span>
+                    Russell Westbrook
+                </button>
+            </div>
+
+            <div class="sidebar-section-label" style="margin-top:24px">Quick asks</div>
+            <div class="quick-list">
+                <button class="quick-btn" onclick="insertPrompt('Who has the highest career scoring average among the 3 players?')">
+                    🏆 Top scorer
+                </button>
+                <button class="quick-btn" onclick="insertPrompt('Compare LeBron James and Stephen Curry career stats side by side')">
+                    ⚡ Compare players
+                </button>
+                <button class="quick-btn" onclick="insertPrompt('Predict points for LeBron James with 70 GP, 35 MIN, 18 FGA, 7 FTA')">
+                    🔮 Predict points
+                </button>
+                <button class="quick-btn" onclick="insertPrompt('What season did Russell Westbrook score the most points?')">
+                    📅 Best season
+                </button>
+            </div>
+
+            <div class="sidebar-footer">
+                <span class="status-dot"></span> AI connected
+            </div>
+        </aside>
+
+        <main class="chat-main">
+
+            <div class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Data AI Assistant</div>
+                    <div class="topbar-sub">Powered by LangChain + SQLite</div>
+                </div>
+                <button class="clear-btn" onclick="clearChat()" title="Clear chat">
+                    ↺ New chat
+                </button>
+            </div>
+
+            <div class="chat-area" id="chat-area">
+                <div class="msg ai">
+                    <div class="ai-avatar">AI</div>
+                    <div class="msg-content">
+                        <div class="bubble">
+                            Hello! You can ask about LeBron, Curry, or Westbrook's stats or request a points prediction. What would you like to learn?
+                        </div>
+                        <div class="timestamp">now</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="suggestions" id="suggestions">
+                <button class="chip" onclick="insertChip(this)">LeBron's career PPG?</button>
+                <button class="chip" onclick="insertChip(this)">Curry's best season?</button>
+                <button class="chip" onclick="insertChip(this)">Westbrook total assists?</button>
+                <button class="chip" onclick="insertChip(this)">Predict Curry's points</button>
+            </div>
+
+            <div class="input-row">
+                <textarea
+                    id="user-input"
+                    placeholder="Ask about NBA stats or request a prediction..."
+                    rows="1"
+                    maxlength="100"
+                    oninput="autoResize(this)"
+                    onkeydown="handleKey(event)"
+                ></textarea>
+                <button class="send-btn" id="send-btn" onclick="sendMessage()" aria-label="Send message" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                </button>
+            </div>
+
+        </main>
     </div>
 
     <script>
-        async function sendMessage() {
-            const inputField = document.getElementById("user-input");
-            const chatBox = document.getElementById("chat-box");
-            const message = inputField.value.trim();
-
-            if (message === "") return;
-
-            // 1. Kullanıcının mesajını ekrana yazdır
-            chatBox.innerHTML += `<div class="message user-message">${message}</div>`;
-            inputField.value = ""; // Kutuyu temizle
-            chatBox.scrollTop = chatBox.scrollHeight; // En alta kaydır
-
-            // 2. Yapay Zeka "Düşünüyor" animasyonu ekle
-            const loadingId = "loading-" + Date.now();
-            chatBox.innerHTML += `<div class="message ai-message" id="${loadingId}">Düşünüyor...</div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            
-            // 3. İŞTE KÖPRÜ BURASI! FastAPI'deki /chat rotasına POST isteği atıyoruz
-            const response = await fetch("/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: message }) // Veriyi JSON formatına çeviriyoruz
-            });
-
-            const data = await response.json();
-
-            // 4. Gelen cevabı ekrana yazdır ve 'Düşünüyor...' yazısını sil
-            document.getElementById(loadingId).remove();
-                
-            // Check for HTTP errors — FastAPI returns {"detail": "..."} on errors
-            if (!response.ok) {
-                chatBox.innerHTML += `<div class="message ai-message" style="color: red;">Hata: ${data.detail || "Unknown error"}</div>`;
-            } else {
-                chatBox.innerHTML += `<div class="message ai-message">${data.reply}</div>`;
-            }                
-            
-            chatBox.scrollTop = chatBox.scrollHeight;
+        // ─── Helpers ───
+        function escHtml(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
-        // Enter tuşuna basıldığında mesajı göndermesi için
-        function handleKeyPress(event) {
-            if (event.key === "Enter") {
+        function getTime() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function scrollToBottom() {
+            const area = document.getElementById('chat-area');
+            area.scrollTop = area.scrollHeight;
+        }
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+            document.getElementById('send-btn').disabled = el.value.trim() === '';
+        }
+
+        function handleKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
                 sendMessage();
             }
+        }
+
+        function insertChip(el) {
+            const input = document.getElementById('user-input');
+            input.value = el.textContent;
+            input.focus();
+            autoResize(input);
+        }
+
+        function insertPrompt(text) {
+            const input = document.getElementById('user-input');
+            input.value = text;
+            input.focus();
+            autoResize(input);
+        }
+
+        function clearChat() {
+            const area = document.getElementById('chat-area');
+            area.innerHTML = `
+                <div class="msg ai">
+                    <div class="ai-avatar">AI</div>
+                    <div class="msg-content">
+                        <div class="bubble">Chat cleared. What would you like to learn?</div>
+                        <div class="timestamp">${getTime()}</div>
+                    </div>
+                </div>`;
+            document.getElementById('suggestions').style.display = 'flex';
+        }
+
+        // ─── Core send ───
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const chatArea = document.getElementById('chat-area');
+            const message = input.value.trim();
+            if (!message) return;
+
+            document.getElementById('suggestions').style.display = 'none';
+
+            chatArea.innerHTML += `
+                <div class="msg user">
+                    <div class="msg-content">
+                        <div class="bubble">${escHtml(message)}</div>
+                        <div class="timestamp">${getTime()}</div>
+                    </div>
+                </div>`;
+
+            input.value = '';
+            input.style.height = 'auto';
+            document.getElementById('send-btn').disabled = true;
+            scrollToBottom();
+
+            const loadingId = 'loading-' + Date.now();
+            chatArea.innerHTML += `
+                <div class="msg ai" id="${loadingId}">
+                    <div class="ai-avatar">AI</div>
+                    <div class="msg-content">
+                        <div class="bubble typing-bubble">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>`;
+            scrollToBottom();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                document.getElementById(loadingId)?.remove();
+
+                if (!response.ok) {
+                    chatArea.innerHTML += `
+                        <div class="msg ai">
+                            <div class="ai-avatar" style="background:#7f1d1d">!</div>
+                            <div class="msg-content">
+                                <div class="bubble error-bubble">Error: ${escHtml(data.detail || 'Unknown error')}</div>
+                                <div class="timestamp">${getTime()}</div>
+                            </div>
+                        </div>`;
+                } else {
+                    chatArea.innerHTML += `
+                        <div class="msg ai">
+                            <div class="ai-avatar">AI</div>
+                            <div class="msg-content">
+                                <div class="bubble">${escHtml(data.reply)}</div>
+                                <div class="timestamp">${getTime()}</div>
+                            </div>
+                        </div>`;
+                }
+            } catch (err) {
+                document.getElementById(loadingId)?.remove();
+                chatArea.innerHTML += `
+                    <div class="msg ai">
+                        <div class="ai-avatar" style="background:#7f1d1d">!</div>
+                        <div class="msg-content">
+                            <div class="bubble error-bubble">Connection error. Is the server running?</div>
+                            <div class="timestamp">${getTime()}</div>
+                        </div>
+                    </div>`;
+            }
+
+            scrollToBottom();
         }
     </script>
 </body>
