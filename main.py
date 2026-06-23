@@ -9,24 +9,24 @@ from dotenv import load_dotenv
 
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain.tools import tool
 
 load_dotenv()
 
 @tool
-def predict_player_points(gp: int, min_played: float, fga: float, fta: float) -> str:
-    """Predicts the total points (PTS) a player will score."""
+def predict_player_points(gp: int, mpg: float, fga_pg: float, fta_pg: float) -> str:
+    """Predicts the points per game (PPG) a player will score given GP, minutes per game, FGA per game, and FTA per game."""
     try:
         model = joblib.load('nba_points_predictor.joblib')
-        input_data = pd.DataFrame([[gp, min_played, fga, fta]], columns=['GP', 'MIN', 'FGA', 'FTA'])
+        input_data = pd.DataFrame([[gp, mpg, fga_pg, fta_pg]], columns=['GP', 'MPG', 'FGA_PG', 'FTA_PG'])
         prediction = model.predict(input_data)[0]
-        return f"Predicted Total Points: {prediction:.2f}"
+        return f"Predicted Points Per Game: {prediction:.2f}"
     except Exception as e:
         return f"Error making prediction: {e}"
 
 db = SQLDatabase.from_uri("sqlite:///nba_database.db")
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0)
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 
 agent_executor = create_sql_agent(
     llm=llm,
@@ -50,7 +50,6 @@ async def serve_frontend():
 @app.post("/chat")
 async def chat_with_ai(request: ChatRequest):
     try:
-        # Explaining the database structure explicitly to ensure smaller models (Lite) do not lose context
         database_metadata_hint = (
         "Database Hint: You have access to a table named 'player_careers'. "
         "This table contains NBA player statistics. The column 'PLAYER_NAME' contains "
@@ -58,7 +57,14 @@ async def chat_with_ai(request: ChatRequest):
         "Always query 'player_careers' and filter by 'PLAYER_NAME' when asked about a player. "
         )
         
-        strict_prompt = database_metadata_hint + request.message + " (Answer directly and concisely. Do not explain your thought process or show SQL queries.)"
+        strict_prompt = (
+            database_metadata_hint +
+            request.message +
+            " (Answer concisely. For predictions, respond in 1-2 sentences mentioning the player name and predicted value. "
+            "For career stats, respond with a brief intro sentence followed by a table of per-game averages. "
+            "For single season questions, respond with a brief intro sentence and then show ALL the key stats "
+            "for that season in a table: SEASON_ID, GP, MIN, PTS, REB, AST, STL, BLK, FG_PCT, FG3_PCT, FT_PCT.)"
+        )
         
         response = agent_executor.invoke({"input": strict_prompt})
         return {"reply": response["output"]}

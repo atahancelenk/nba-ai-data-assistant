@@ -16,8 +16,13 @@ def main():
 
     # We want to predict Total Points (PTS) based on Games Played (GP), Minutes (MIN), 
     # Field Goal Attempts (FGA), and Free Throw Attempts (FTA)
-    feature_columns = ['GP', 'MIN', 'FGA', 'FTA']
-    target_column = 'PTS'
+    df['MPG'] = df['MIN'] / df['GP']   # Minutes per game
+    df['FGA_PG'] = df['FGA'] / df['GP']  # FGA per game
+    df['FTA_PG'] = df['FTA'] / df['GP']  # FTA per game
+    df['PPG'] = df['PTS'] / df['GP']     # Points per game (target)
+
+    feature_columns = ['GP', 'MPG', 'FGA_PG', 'FTA_PG']
+    target_column = 'PPG'
     
     X = df[feature_columns]
     y = df[target_column]
