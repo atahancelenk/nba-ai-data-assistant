@@ -412,3 +412,42 @@ html, body {
     .topbar { padding: 12px 16px; }
     .input-row { padding: 10px 12px 14px; }
 }
+
+/* ─── Stat Table ─── */
+.stat-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.stat-table th, .stat-table td {
+    padding: 7px 12px;
+    text-align: center;
+    border: 0.5px solid var(--border-md);
+}
+
+.stat-table th {
+    background: var(--navy-700);
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.stat-table td {
+    background: var(--navy-800);
+    color: var(--text-secondary);
+}
+
+.stat-table tr:hover td {
+    background: var(--navy-700);
+    color: var(--text-primary);
+}
+
+.bubble p {
+    margin-bottom: 6px;
+}
+
+.bubble p:last-child {
+    margin-bottom: 0;
+}

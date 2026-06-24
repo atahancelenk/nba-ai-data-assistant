@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NBA Data AI Assistant</title>
-    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -81,7 +81,7 @@
                 <button class="chip" onclick="insertChip(this)">LeBron's career PPG?</button>
                 <button class="chip" onclick="insertChip(this)">Curry's best season?</button>
                 <button class="chip" onclick="insertChip(this)">Westbrook total assists?</button>
-                <button class="chip" onclick="insertChip(this)">Predict Curry's points</button>
+                <button class="chip" onclick="insertChip(this)">Predict Curry's points in the upcoming season</button>
             </div>
 
             <div class="input-row">
@@ -163,6 +163,47 @@
             document.getElementById('suggestions').style.display = 'flex';
         }
 
+        function renderMarkdown(text) {
+            // Escape HTML first
+            let escaped = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+            // Convert markdown table to HTML table
+            const lines = escaped.split('\n');
+            let html = '';
+            let inTable = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                if (line.startsWith('|') && line.endsWith('|')) {
+                    if (!inTable) {
+                            html += '<table class="stat-table">';
+                            inTable = true;
+                    }
+                    // Skip separator rows like |---|---|
+                    if (line.replace(/[\|\-\:\s]/g, '').length === 0) continue;
+
+                    const isHeader = i === lines.findIndex(l => l.trim().startsWith('|'));
+                    const tag = isHeader ? 'th' : 'td';
+                    const cells = line.split('|').filter(c => c.trim() !== '');
+                    html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+                } else {
+                    if (inTable) {
+                        html += '</table>';
+                        inTable = false;
+                    }   
+                    if (line) html += `<p>${line}</p>`;
+                }
+            }   
+
+            if (inTable) html += '</table>';
+            return html;
+        }
+
         // ─── Core send ───
         async function sendMessage() {
             const input = document.getElementById('user-input');
@@ -221,7 +262,7 @@
                         <div class="msg ai">
                             <div class="ai-avatar">AI</div>
                             <div class="msg-content">
-                                <div class="bubble">${escHtml(data.reply)}</div>
+                                <div class="bubble">${renderMarkdown(data.reply)}</div>
                                 <div class="timestamp">${getTime()}</div>
                             </div>
                         </div>`;
