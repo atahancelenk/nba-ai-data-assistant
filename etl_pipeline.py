@@ -4,36 +4,36 @@ from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats
 import time
 
-player_names = ["LeBron James", "Russell Westbrook", "Stephen Curry"]
-
-all_stats = pd.DataFrame()
-
-for name in player_names:
-    nba_players = players.get_active_players()
-    matched_players = [player for player in nba_players if player['full_name'] == name]
-    if not matched_players:
-        raise ValueError(f"Player not found: {name}. Please check the names.")
-    player_info = matched_players[0]
-    player_id = player_info['id']
-    
-    print(f"Downloading data for {name} (ID: {player_id})...")
-    career = playercareerstats.PlayerCareerStats(player_id=player_id)
-    
-    df = career.get_data_frames()[0]
-    
-    df['PLAYER_NAME'] = name
-    
-    all_stats = pd.concat([all_stats, df], ignore_index=True)
-    
-    time.sleep(1.5)
-
-print("\nData download complete!")
-print(f"Collected a total of {len(all_stats)} season records.")
-
-print("Saving data to SQLite database...")
-
 engine = create_engine('sqlite:///nba_database.db')
 
-all_stats.to_sql('player_careers', con=engine, if_exists='replace', index=False)
+active_players = players.get_active_players()
+print(f"Found {len(active_players)} active players.")
 
-print("\nAll data has been successfully saved to 'nba_database.db'.")
+# Resume support: skip players already pulled, in case this gets interrupted
+try:
+    existing_ids = pd.read_sql("SELECT DISTINCT PLAYER_ID FROM player_careers", engine)['PLAYER_ID'].tolist()
+except Exception:
+    existing_ids = []
+
+for player in active_players:
+    player_id = player['id']
+    name = player['full_name']
+
+    if player_id in existing_ids:
+        continue
+
+    for attempt in range(3):
+        try:
+            career = playercareerstats.PlayerCareerStats(player_id=player_id)
+            df = career.get_data_frames()[0]
+            df['PLAYER_NAME'] = name
+            df.to_sql('player_careers', con=engine, if_exists='append', index=False)
+            print(f"Saved {name}")
+            break
+        except Exception as e:
+            print(f"Retry {attempt+1} for {name}: {e}")
+            time.sleep(5 * (attempt + 1))
+
+    time.sleep(1.5)
+
+print("Done.")

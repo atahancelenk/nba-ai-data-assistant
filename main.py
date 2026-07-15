@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from sqlalchemy import create_engine
 from dotenv import load_dotenv
 
 from langchain_community.utilities import SQLDatabase
@@ -37,6 +38,8 @@ def predict_player_points(gp: int, mpg: float, fga_pg: float, fta_pg: float) -> 
         return f"Error making prediction: {e}"
 
 db = SQLDatabase.from_uri("sqlite:///nba_database.db")
+engine = create_engine("sqlite:///nba_database.db")
+
 llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 
 agent_executor = create_sql_agent(
@@ -58,13 +61,18 @@ class ChatRequest(BaseModel):
 async def serve_frontend():
     return FileResponse("static/index.html")
 
+@app.get("/players")
+async def list_players():
+    df = pd.read_sql("SELECT DISTINCT PLAYER_NAME FROM player_careers ORDER BY PLAYER_NAME", con=engine)
+    return {"players": df['PLAYER_NAME'].tolist()}
+
 @app.post("/chat")
 async def chat_with_ai(request: ChatRequest):
     try:
         database_metadata_hint = (
-        "Database Hint: You have access to a table named 'player_careers'. "
-        "This table contains NBA player statistics. The column 'PLAYER_NAME' contains "
-        "the exact text names of the players, such as 'LeBron James', 'Russell Westbrook', and 'Stephen Curry'. "
+        "You have access to a table named 'player_careers' containing NBA player "
+        "season statistics. The 'PLAYER_NAME' column contains the player's full name "
+        "as text, e.g. 'LeBron James'. Match names as closely as possible."
         "Always query 'player_careers' and filter by 'PLAYER_NAME' when asked about a player. "
         "You also have 'player_elo' (current ELO_RATING and GAMES_PLAYED per PLAYER_NAME) "
         "and 'player_elo_history' (one row per head-to-head game showing RATING_BEFORE, "
