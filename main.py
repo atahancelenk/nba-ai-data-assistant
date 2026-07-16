@@ -35,12 +35,8 @@ def predict_player_points(gp: int, mpg: float, fga_pg: float, fta_pg: float) -> 
     except Exception as e:
         return f"Error making prediction: {e}"
 
-<<<<<<< HEAD
-=======
-db = SQLDatabase.from_uri("sqlite:///nba_database.db")
-engine = create_engine("sqlite:///nba_database.db")
+db = SQLDatabase.from_uri(DATABASE_URL)
 
->>>>>>> 5f212fea3cbb6ead9a76e27fc63c99d137366a74
 llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
 
 agent_executor = create_sql_agent(
