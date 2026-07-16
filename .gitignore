@@ -11,3 +11,9 @@ Thumbs.db
 
 # Sensitive Data & Local Databases
 .env
+
+elo_cache/
+
+nba_database.db
+*.joblib
+migrate_to_postgres.py

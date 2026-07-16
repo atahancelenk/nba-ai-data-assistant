@@ -4,10 +4,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
 import joblib
+from db import engine
 
 def main():
     print("Connecting to the database...")
-    engine = create_engine('sqlite:///nba_database.db')
     
     query = "SELECT * FROM player_careers"
     df = pd.read_sql(query, con=engine)
