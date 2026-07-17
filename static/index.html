@@ -5,10 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NBA Data AI Assistant</title>
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="app">
+
+    <!-- LANDING PAGE -->
+    <div class="landing" id="landing">
+        <div class="landing-inner">
+
+            <div class="landing-nav">
+                <span class="logo-ball">🏀</span>
+                <span class="logo-text">NB<strong>AI</strong></span>
+                <a class="landing-repo-link" href="https://github.com/atahancelenk/nba-ai-data-assistant" target="_blank" rel="noopener">Source →</a>
+            </div>
+
+            <div class="landing-hero">
+                <p class="landing-eyebrow">Solo-built &middot; FastAPI + LangChain + SQLite</p>
+                <h1 class="landing-headline">It reads the defense<br>before it picks a play.</h1>
+                <p class="landing-sub">
+                    Ask a question in plain English. An agent decides at runtime whether to
+                    run a SQL query against real NBA stats, call a trained regression model,
+                    or pull head-to-head Elo ratings &mdash; then answers in a formatted table.
+                    Nothing is hardcoded to a specific question type.
+                </p>
+                <button class="landing-cta" onclick="enterApp()">
+                    Open the assistant
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+            </div>
+
+            <!-- Signature element: box score -->
+            <div class="boxscore">
+                <div class="boxscore-title">Box score &mdash; what's actually running</div>
+                <table class="boxscore-table">
+                    <thead>
+                        <tr>
+                            <th>Capability</th>
+                            <th>How it decides</th>
+                            <th>What it returns</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="bs-name">SQL agent</td>
+                            <td>Maps natural language onto live queries over <code>player_careers</code>, self-corrects failed queries</td>
+                            <td>Formatted per-game and per-season stat tables</td>
+                        </tr>
+                        <tr>
+                            <td class="bs-name">Points predictor</td>
+                            <td>Linear regression trained on per-game normalized inputs &mdash; GP, MPG, FGA/g, FTA/g</td>
+                            <td>Predicted PPG for a hypothetical stat line</td>
+                        </tr>
+                        <tr>
+                            <td class="bs-name">Elo ratings</td>
+                            <td>Real head-to-head games scored with Hollinger's Game Score, K=20, seeded at 1500</td>
+                            <td>Ranked leaderboard and per-game rating history</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="landing-flow">
+                <span>nba_api</span>
+                <span class="flow-arrow">→</span>
+                <span>ETL pipeline</span>
+                <span class="flow-arrow">→</span>
+                <span>SQLite</span>
+                <span class="flow-arrow">→</span>
+                <span>LangChain agent</span>
+                <span class="flow-arrow">→</span>
+                <span>FastAPI</span>
+                <span class="flow-arrow">→</span>
+                <span>this chat</span>
+            </div>
+
+            <div class="landing-footer">
+                Built by Atahan Celenk as an end-to-end data + ML engineering portfolio piece.
+            </div>
+        </div>
+    </div>
+
+    <!-- CHAT APP  -->
+    <div class="app" id="app-view">
 
         <aside class="sidebar">
             <div class="sidebar-logo">
@@ -16,34 +97,32 @@
                 <span class="logo-text">NB<strong>AI</strong></span>
             </div>
 
-            <div class="sidebar-section-label">Players</div>
-            <div class="player-list">
-                <button class="player-chip active" onclick="insertPrompt('Tell me about LeBron James career stats')">
-                    <span class="player-avatar" style="background:#1d428a">LJ</span>
-                    LeBron James
-                </button>
-                <button class="player-chip" onclick="insertPrompt('Tell me about Stephen Curry career stats')">
-                    <span class="player-avatar" style="background:#c8102e">SC</span>
-                    Stephen Curry
-                </button>
-                <button class="player-chip" onclick="insertPrompt('Tell me about Russell Westbrook career stats')">
-                    <span class="player-avatar" style="background:#9333ea">RW</span>
-                    Russell Westbrook
-                </button>
+            <div class="sidebar-section-label">Find a player</div>
+            <div class="player-search">
+                <input
+                    type="text"
+                    id="player-search-input"
+                    class="player-search-input"
+                    placeholder="Search the active roster..."
+                    autocomplete="off"
+                    oninput="handlePlayerSearch(this.value)"
+                    onfocus="handlePlayerSearch(this.value)"
+                >
+                <div class="player-search-results" id="player-search-results"></div>
             </div>
 
             <div class="sidebar-section-label" style="margin-top:24px">Quick asks</div>
             <div class="quick-list">
-                <button class="quick-btn" onclick="insertPrompt('Who has the highest career scoring average among the 3 players?')">
-                    🏆 Top scorer
+                <button class="quick-btn" onclick="insertPrompt('Who are the active leaders in career scoring average?')">
+                    🏆 Scoring leaders
                 </button>
-                <button class="quick-btn" onclick="insertPrompt('Compare LeBron James and Stephen Curry career stats side by side')">
-                    ⚡ Compare players
+                <button class="quick-btn" onclick="insertPrompt('Compare [Player A] and [Player B] career stats side by side')">
+                    ⚡ Compare two players
                 </button>
-                <button class="quick-btn" onclick="insertPrompt('Predict points for LeBron James with 70 GP, 35 MIN, 18 FGA, 7 FTA')">
+                <button class="quick-btn" onclick="insertPrompt('Predict points for [Player Name] with 70 GP, 35 MIN, 18 FGA, 7 FTA')">
                     🔮 Predict points
                 </button>
-                <button class="quick-btn" onclick="insertPrompt('What season did Russell Westbrook score the most points?')">
+                <button class="quick-btn" onclick="insertPrompt('What season did [Player Name] score the most points?')">
                     📅 Best season
                 </button>
                 <button class="quick-btn" onclick="insertPrompt('Show me the Elo rating leaderboard')">
@@ -63,9 +142,10 @@
                     <div class="topbar-title">Data AI Assistant</div>
                     <div class="topbar-sub">Powered by LangChain + SQLite</div>
                 </div>
-                <button class="clear-btn" onclick="clearChat()" title="Clear chat">
-                    ↺ New chat
-                </button>
+                <div class="topbar-actions">
+                    <button class="clear-btn" onclick="backToLanding()" title="Back to intro">↩ About</button>
+                    <button class="clear-btn" onclick="clearChat()" title="Clear chat">↺ New chat</button>
+                </div>
             </div>
 
             <div class="chat-area" id="chat-area">
@@ -81,10 +161,10 @@
             </div>
 
             <div class="suggestions" id="suggestions">
-                <button class="chip" onclick="insertChip(this)">LeBron's career PPG?</button>
-                <button class="chip" onclick="insertChip(this)">Curry's best season?</button>
-                <button class="chip" onclick="insertChip(this)">Westbrook total assists?</button>
-                <button class="chip" onclick="insertChip(this)">Predict Curry's points in the upcoming season</button>
+                <button class="chip" onclick="insertChip(this)">[Player]'s career PPG?</button>
+                <button class="chip" onclick="insertChip(this)">[Player]'s best season?</button>
+                <button class="chip" onclick="insertChip(this)">[Player]'s total career assists?</button>
+                <button class="chip" onclick="insertChip(this)">Predict [Player]'s points next season</button>
             </div>
 
             <div class="input-row">
@@ -107,7 +187,87 @@
     </div>
 
     <script>
-        // ─── Helpers ───
+        // View toggling
+        function enterApp() {
+            const landing = document.getElementById('landing');
+            const app = document.getElementById('app-view');
+            landing.classList.add('landing-exit');
+            setTimeout(() => {
+                landing.style.display = 'none';
+                app.style.display = 'flex';
+                document.getElementById('user-input').focus();
+                loadPlayerRoster();
+            }, 280);
+        }
+
+        // Player search
+        let playerRoster = null;
+        let playerRosterLoading = null;
+
+        function loadPlayerRoster() {
+            if (playerRoster || playerRosterLoading) return playerRosterLoading;
+            playerRosterLoading = fetch('/players')
+                .then(res => res.json())
+                .then(data => { playerRoster = data.players || []; })
+                .catch(() => { playerRoster = []; });
+            return playerRosterLoading;
+        }
+
+        function renderPlayerResults(matches) {
+            const box = document.getElementById('player-search-results');
+            if (matches.length === 0) {
+                box.innerHTML = '';
+                box.classList.remove('open');
+                return;
+            }
+            box.innerHTML = matches.map(name =>
+                `<button class="player-result" onclick="selectPlayer('${name.replace(/'/g, "\\'")}')">${escHtml(name)}</button>`
+            ).join('');
+            box.classList.add('open');
+        }
+
+        async function handlePlayerSearch(query) {
+            await loadPlayerRoster();
+            const box = document.getElementById('player-search-results');
+            const q = query.trim().toLowerCase();
+
+            if (q === '') {
+                box.innerHTML = '';
+                box.classList.remove('open');
+                return;
+            }
+
+            const matches = (playerRoster || [])
+                .filter(name => name.toLowerCase().includes(q))
+                .slice(0, 8);
+
+            renderPlayerResults(matches);
+        }
+
+        function selectPlayer(name) {
+            insertPrompt(`Tell me about ${name} career stats`);
+            const box = document.getElementById('player-search-results');
+            box.innerHTML = '';
+            box.classList.remove('open');
+            document.getElementById('player-search-input').value = '';
+        }
+
+        document.addEventListener('click', (e) => {
+            const searchWrap = document.querySelector('.player-search');
+            if (searchWrap && !searchWrap.contains(e.target)) {
+                document.getElementById('player-search-results').classList.remove('open');
+            }
+        });
+
+        function backToLanding() {
+            const landing = document.getElementById('landing');
+            const app = document.getElementById('app-view');
+            app.style.display = 'none';
+            landing.style.display = 'flex';
+            landing.classList.remove('landing-exit');
+        }
+
+        // Helpers
         function escHtml(str) {
             return str
                 .replace(/&/g, '&amp;')
@@ -207,7 +367,7 @@
             return html;
         }
 
-        // ─── Core send ───
+        // Core send
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const chatArea = document.getElementById('chat-area');
