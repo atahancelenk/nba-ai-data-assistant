@@ -17,13 +17,10 @@ Usage:
 
 import pandas as pd
 import numpy as np
-from sqlalchemy import create_engine
+from db import engine
 
-DB_PATH = "sqlite:///nba_database.db"
-
-# ─────────────────────────────────────────────────────────────
 # Archetype taxonomy
-# ─────────────────────────────────────────────────────────────
+
 ARCHETYPES = [
     "Sharpshooter",
     "3-and-D Wing",
@@ -40,7 +37,6 @@ ARCHETYPES = [
 # Percentile cut lines. Tune these once you see real distributions.
 P_HIGH = 0.75
 P_MID = 0.60
-
 
 def load_latest_season_per_player(engine):
     df = pd.read_sql("SELECT * FROM player_careers", con=engine)
@@ -67,7 +63,6 @@ def load_latest_season_per_player(engine):
     resolved = df.groupby("PLAYER_NAME", group_keys=False).apply(resolve_group)
     return resolved.reset_index(drop=True)
 
-
 def compute_features(df):
     df = df.copy()
 
@@ -89,7 +84,6 @@ def compute_features(df):
 
     return df
 
-
 def add_percentiles(df):
     feature_cols = [
         "FG3A_RATE", "FG3_PCT", "FT_RATE", "AST_PER36",
@@ -98,7 +92,6 @@ def add_percentiles(df):
     for col in feature_cols:
         df[f"{col}_PCT"] = df[col].rank(pct=True)
     return df
-
 
 def classify(row):
     """Top-down gated decision tree. Defensive fits checked first since
@@ -140,10 +133,7 @@ def classify(row):
 
     return "Combo Scorer"
 
-
 def main():
-    engine = create_engine(DB_PATH)
-
     print("Loading most recent season per player...")
     df = load_latest_season_per_player(engine)
     print(f"Resolved {len(df)} players.")
@@ -170,7 +160,6 @@ def main():
     print("\nDistribution:")
     print(result["ARCHETYPE"].value_counts())
     print("\nDone. 'player_archetypes' table written to nba_database.db")
-
 
 if __name__ == "__main__":
     main()

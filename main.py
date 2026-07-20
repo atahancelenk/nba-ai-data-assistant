@@ -67,13 +67,14 @@ async def list_players():
 async def chat_with_ai(request: ChatRequest):
     try:
         database_metadata_hint = (
-        "You have access to a table named 'player_careers' containing NBA player "
-        "season statistics. The 'PLAYER_NAME' column contains the player's full name "
-        "as text, e.g. 'LeBron James'. Match names as closely as possible."
-        "Always query 'player_careers' and filter by 'PLAYER_NAME' when asked about a player. "
-        "You also have 'player_elo' (current ELO_RATING and GAMES_PLAYED per PLAYER_NAME) "
-        "and 'player_elo_history' (one row per head-to-head game showing RATING_BEFORE, "
-        "RATING_AFTER, GAME_DATE, OPPONENT_NAME — use this for Elo trend/history questions). "
+            "You have access to a table named 'player_careers' containing NBA player "
+            "season statistics. The 'PLAYER_NAME' column contains the player's full name "
+            "as text, e.g. 'LeBron James'. Match names as closely as possible. "
+            "Always query 'player_careers' and filter by 'PLAYER_NAME' when asked about career stats. "
+            "You also have 'player_elo' (current ELO_RATING and GAMES_PLAYED per PLAYER_NAME), "
+            "'player_elo_history' (per-game Elo history), and 'player_archetypes' "
+            "(PLAYER_NAME, SEASON, ARCHETYPE, and underlying rate stats like FG3A_RATE, AST_PER36, "
+            "REB_PER36, STOCKS_PER36 — use this when asked about a player's build, playstyle, or archetype). "
         )
         
         strict_prompt = (
@@ -82,7 +83,9 @@ async def chat_with_ai(request: ChatRequest):
             " (Answer concisely. For predictions, respond in 1-2 sentences mentioning the player name and predicted value. "
             "For career stats, respond with a brief intro sentence followed by a table of per-game averages. "
             "For single season questions, respond with a brief intro sentence and then show ALL the key stats "
-            "for that season in a table: SEASON_ID, GP, MIN, PTS, REB, AST, STL, BLK, FG_PCT, FG3_PCT, FT_PCT.)"
+            "for that season in a table: SEASON_ID, GP, MIN, PTS, REB, AST, STL, BLK, FG_PCT, FG3_PCT, FT_PCT. "
+            "Round all per-game and percentage stats (PPG, APG, RPG, FG_PCT, FG3_PCT, FT_PCT, etc.) to 1 decimal place. "
+            "Elo ratings should always be shown as whole numbers with no decimals.)"
         )
         
         response = agent_executor.invoke({"input": strict_prompt})
