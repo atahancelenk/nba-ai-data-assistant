@@ -5,16 +5,8 @@ from nba_api.stats.endpoints import playercareerstats
 from db import engine
 import time
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 engine = create_engine('sqlite:///nba_database.db')
 
->>>>>>> 5f212fea3cbb6ead9a76e27fc63c99d137366a74
-=======
-engine = create_engine('sqlite:///nba_database.db')
-
->>>>>>> 5f212fea3cbb6ead9a76e27fc63c99d137366a74
 active_players = players.get_active_players()
 print(f"Found {len(active_players)} active players.")
 
