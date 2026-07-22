@@ -15,9 +15,9 @@ Elo live.
 import os
 import time
 import pandas as pd
-from sqlalchemy import create_engine
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import leaguegamelog
+from db import engine
 
 K_FACTOR = 20
 STARTING_ELO = 1500
@@ -31,12 +31,10 @@ CACHE_DIR = "elo_cache"
 def season_strings(start_year: int, end_year: int) -> list:
     return [f"{y}-{str(y + 1)[-2:]}" for y in range(start_year, end_year + 1)]
 
-
 def get_active_player_ids() -> dict:
     """Returns {PLAYER_ID: PLAYER_NAME} for the current active roster (~500 players)."""
     active = players.get_active_players()
     return {p['id']: p['full_name'] for p in active}
-
 
 def fetch_season_log(season: str) -> pd.DataFrame:
     """
@@ -60,7 +58,6 @@ def fetch_season_log(season: str) -> pd.DataFrame:
     time.sleep(1.5)
     return df
 
-
 def compute_game_score(row: pd.Series) -> float:
     return (
         row['PTS']
@@ -75,7 +72,6 @@ def compute_game_score(row: pd.Series) -> float:
         - 0.4 * row['PF']
         - row['TOV']
     )
-
 
 def head_to_head_for_season(season_df: pd.DataFrame, active_ids: set, active_map: dict) -> pd.DataFrame:
     """
@@ -109,7 +105,6 @@ def head_to_head_for_season(season_df: pd.DataFrame, active_ids: set, active_map
     ]].rename(columns={'GAME_DATE_A': 'GAME_DATE'})
 
     return h2h.sort_values('GAME_DATE').reset_index(drop=True)
-
 
 def apply_elo_updates(h2h: pd.DataFrame, ratings: dict, games_played: dict, history: list):
     """Mutates ratings/games_played/history in place, processing games in order."""
@@ -147,7 +142,6 @@ def apply_elo_updates(h2h: pd.DataFrame, ratings: dict, games_played: dict, hist
             'RATING_BEFORE': rating_b_before, 'RATING_AFTER': ratings[b],
         })
 
-
 def main():
     active_map = get_active_player_ids()
     active_ids = set(active_map.keys())
@@ -183,7 +177,6 @@ def main():
     print("\n--- Top 10 Elo Ratings ---")
     print(elo_df.head(10).to_string(index=False))
     print(f"\nSaved {len(elo_df)} player ratings and {len(history_df)} history rows.")
-
 
 if __name__ == "__main__":
     main()

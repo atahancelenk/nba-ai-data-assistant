@@ -1,11 +1,8 @@
 import pandas as pd
-from sqlalchemy import create_engine
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats
 from db import engine
 import time
-
-engine = create_engine('sqlite:///nba_database.db')
 
 active_players = players.get_active_players()
 print(f"Found {len(active_players)} active players.")
