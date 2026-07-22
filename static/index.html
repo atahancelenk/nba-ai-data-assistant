@@ -130,6 +130,16 @@
                 </button>
             </div>
 
+            <div class="sidebar-section-label" style="margin-top:24px">Visualize</div>
+            <div class="quick-list">
+                <button class="quick-btn" onclick="insertPrompt('Show Elo leaderboard chart')">
+                    📊 Elo leaderboard chart
+                </button>
+                <button class="quick-btn" onclick="insertPrompt('Show Elo history for [Player Name]')">
+                    📈 Elo history chart
+                </button>
+            </div>
+
             <div class="sidebar-footer">
                 <span class="status-dot"></span> AI connected
             </div>
@@ -186,6 +196,7 @@
         </main>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script>
         // View toggling
         function enterApp() {
@@ -367,6 +378,143 @@
             return html;
         }
 
+        // ---- Chart bubbles (Elo leaderboard / Elo history) ----
+        // These bypass the LLM agent entirely: they're deterministic data
+        // lookups, and Chart.js needs clean JSON, not agent-generated markdown.
+
+        const ELO_LEADERBOARD_CHART_RE = /^show elo leaderboard chart$/i;
+        const ELO_HISTORY_CHART_RE = /^show elo history for (.+)$/i;
+
+        async function fetchJSON(url) {
+            const res = await fetch(url);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.detail || `Request failed (${res.status})`);
+            }
+            return data;
+        }
+
+        function appendChartBubble(canvasId) {
+            const chatArea = document.getElementById('chat-area');
+            chatArea.innerHTML += `
+                <div class="msg ai chart-msg">
+                    <div class="ai-avatar">AI</div>
+                    <div class="msg-content">
+                        <div class="bubble chart-bubble">
+                            <div class="chart-wrap"><canvas id="${canvasId}"></canvas></div>
+                        </div>
+                        <div class="timestamp">${getTime()}</div>
+                    </div>
+                </div>`;
+            scrollToBottom();
+        }
+
+        function appendErrorBubble(message) {
+            const chatArea = document.getElementById('chat-area');
+            chatArea.innerHTML += `
+                <div class="msg ai">
+                    <div class="ai-avatar" style="background:#7f1d1d">!</div>
+                    <div class="msg-content">
+                        <div class="bubble error-bubble">${escHtml(message)}</div>
+                        <div class="timestamp">${getTime()}</div>
+                    </div>
+                </div>`;
+            scrollToBottom();
+        }
+
+        async function showEloLeaderboardChart() {
+            try {
+                const data = await fetchJSON('/elo/leaderboard-chart');
+                const canvasId = 'chart-' + Date.now();
+                appendChartBubble(canvasId);
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Elo Rating',
+                            data: data.data,
+                            backgroundColor: '#2563eb',
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                beginAtZero: false,
+                                ticks: { color: '#94a3b8' },
+                                grid: { color: 'rgba(255,255,255,0.07)' }
+                            },
+                            y: {
+                                ticks: { color: '#f0f6ff' },
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: 'Elo Rating Leaderboard', color: '#f0f6ff', font: { size: 13 } }
+                        }
+                    }
+                });
+            } catch (err) {
+                appendErrorBubble('Could not load the Elo leaderboard: ' + err.message);
+            }
+        }
+
+        async function showEloHistoryChart(playerName) {
+            try {
+                const data = await fetchJSON(`/elo/history-chart/${encodeURIComponent(playerName)}`);
+                const canvasId = 'chart-' + Date.now();
+                appendChartBubble(canvasId);
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: `${playerName} Elo Rating`,
+                            data: data.data,
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.15)',
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                ticks: { color: '#94a3b8', maxTicksLimit: 8 },
+                                grid: { display: false }
+                            },
+                            y: {
+                                ticks: { color: '#94a3b8' },
+                                grid: { color: 'rgba(255,255,255,0.07)' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: `${playerName} — Elo Rating Over Time`,
+                                color: '#f0f6ff',
+                                font: { size: 13 }
+                            }
+                        }
+                    }
+                });
+            } catch (err) {
+                appendErrorBubble(`Could not load Elo history for "${playerName}": ` + err.message);
+            }
+        }
+
         // Core send
         async function sendMessage() {
             const input = document.getElementById('user-input');
@@ -388,6 +536,17 @@
             input.style.height = 'auto';
             document.getElementById('send-btn').disabled = true;
             scrollToBottom();
+
+            // Chart commands bypass the LLM agent entirely.
+            if (ELO_LEADERBOARD_CHART_RE.test(message)) {
+                await showEloLeaderboardChart();
+                return;
+            }
+            const historyMatch = message.match(ELO_HISTORY_CHART_RE);
+            if (historyMatch) {
+                await showEloHistoryChart(historyMatch[1].trim());
+                return;
+            }
 
             const loadingId = 'loading-' + Date.now();
             chatArea.innerHTML += `

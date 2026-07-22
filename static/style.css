@@ -722,3 +722,24 @@ html, body {
     .boxscore-table { font-size: 11.5px; }
     .boxscore-table th:nth-child(3), .boxscore-table td:nth-child(3) { display: none; }
 }
+
+/* Chart bubbles */
+.msg.ai.chart-msg {
+    max-width: 92%;
+    width: 92%;
+}
+
+.chart-bubble {
+    padding: 14px 16px 10px;
+    width: 100%;
+}
+
+.chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 280px;
+}
+
+@media (max-width: 640px) {
+    .chart-wrap { height: 220px; }
+}
