@@ -1,10 +1,11 @@
+import os
 import pandas as pd
 import joblib
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 from db import engine, DATABASE_URL
 
@@ -37,7 +38,7 @@ def _predict_from_model(filename: str, gp: int, mpg: float, fga_pg: float, fta_p
 @tool
 def get_elo_leaderboard() -> str:
     """Returns the current Elo rating leaderboard for all tracked players, ranked highest to lowest."""
-    df = pd.read_sql("SELECT PLAYER_NAME, ELO_RATING, GAMES_PLAYED FROM player_elo ORDER BY ELO_RATING DESC", engine)
+    df = pd.read_sql('SELECT "PLAYER_NAME", "ELO_RATING", "GAMES_PLAYED" FROM player_elo ORDER BY "ELO_RATING" DESC', engine)
     lines = [f"{i+1}. {row.PLAYER_NAME}: {row.ELO_RATING:.0f} Elo ({row.GAMES_PLAYED} head-to-head games)"
              for i, row in enumerate(df.itertuples())]
     return "\n".join(lines)
@@ -105,15 +106,15 @@ async def serve_frontend():
 
 @app.get("/players")
 async def list_players():
-    df = pd.read_sql("SELECT DISTINCT PLAYER_NAME FROM player_careers ORDER BY PLAYER_NAME", con=engine)
+    df = pd.read_sql('SELECT DISTINCT "PLAYER_NAME" FROM player_careers ORDER BY "PLAYER_NAME"', con=engine)
     return {"players": df['PLAYER_NAME'].tolist()}
 
 @app.get("/elo/leaderboard-chart")
 async def elo_leaderboard_chart(limit: int = 15):
     """Top-N Elo leaderboard as chart-ready JSON (labels + data), highest first."""
     query = text(
-        "SELECT PLAYER_NAME, ELO_RATING FROM player_elo "
-        "ORDER BY ELO_RATING DESC LIMIT :limit"
+        'SELECT "PLAYER_NAME", "ELO_RATING" FROM player_elo '
+        'ORDER BY "ELO_RATING" DESC LIMIT :limit'
     )
     df = pd.read_sql(query, con=engine, params={"limit": limit})
     if df.empty:
@@ -127,8 +128,8 @@ async def elo_leaderboard_chart(limit: int = 15):
 async def elo_history_chart(player_name: str):
     """Chronological Elo rating history for one player, as chart-ready JSON."""
     query = text(
-        "SELECT GAME_DATE, RATING_AFTER FROM player_elo_history "
-        "WHERE PLAYER_NAME = :player_name ORDER BY GAME_DATE ASC"
+        'SELECT "GAME_DATE", "RATING_AFTER" FROM player_elo_history '
+        'WHERE "PLAYER_NAME" = :player_name ORDER BY "GAME_DATE" ASC'
     )
     df = pd.read_sql(query, con=engine, params={"player_name": player_name})
     if df.empty:
@@ -145,6 +146,13 @@ async def elo_history_chart(player_name: str):
 async def chat_with_ai(request: ChatRequest):
     try:
         database_metadata_hint = (
+            "IMPORTANT: All column names in this database are UPPERCASE (e.g. PLAYER_NAME, GP, PTS, "
+            "ELO_RATING). This is a Postgres database, and Postgres is case-sensitive for identifiers "
+            "that aren't all-lowercase. You MUST wrap every column name in double quotes exactly as "
+            'shown, e.g. SELECT "PLAYER_NAME", "PTS" FROM player_careers -- an unquoted or '
+            "lowercased column name will fail with a 'column does not exist' error. Table names "
+            "(player_careers, player_elo, player_elo_history, player_archetypes) are lowercase and "
+            "do not need quoting. "
             "You have access to a table named 'player_careers' containing NBA player "
             "season statistics. The 'PLAYER_NAME' column contains the player's full name "
             "as text, e.g. 'LeBron James'. Match names as closely as possible. "
